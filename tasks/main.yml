@@ -1,0 +1,92 @@
+---
+# currently builtin user creation does not place ssh keys, this could go into common
+- name: Setup SO user
+  tags: so
+  block:
+
+    - name: Add so user
+      ansible.builtin.user:
+        name: "{{ so_user }}"
+        home: "{{ so_home }}"
+        uid: "{{ so_uid | default(omit) }}"
+        state: present
+
+    #- name: Set authorized key taken from file
+    #  ansible.posix.authorized_key:
+    #    user: "{{ so_user }}"
+    #    state: present
+    #    key: "{{ lookup('file', {{ so_user_keys }}) }}"
+
+  when:
+    - so_user_add == true
+
+
+- name: Install Latest Stack Orchestrator
+  tags: so
+  block:
+
+    - name: Check so paths
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ so_user }}"
+        group: "{{ so_user }}"
+        mode: 0755
+      with_items:
+        - "{{ so_bin_path }}"
+
+    - name: Download latest so binary
+      ansible.builtin.get_url:
+        url: "{{ so_bin_url }}"
+        dest: "{{ so_bin_path }}/laconic-so"
+        owner: root
+        group: root
+        mode: 0755 
+        timeout: 60
+        force: yes
+
+  when:
+    - so_bin_get == true
+
+
+- name: SO user tasks
+  tags: so-repo
+  block:
+    
+    - name: Check repo paths
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ so_user }}"
+        group: "{{ so_user }}"
+        mode: 0755
+      with_items:
+        - "{{ so_repo_path }}"
+
+    - name: Checkout so repo
+      become: false
+      remote_user: "{{ so_user }}"
+      vars:
+        ansible_ssh_common_args: "-o ForwardAgent=yes"
+      ansible.builtin.git:
+        repo: "{{ so_repo_url }}"
+        dest: "{{ so_repo_path }}/stack-orchestrator"
+        update: "{{ so_repo_update }}"
+        version: "{{ so_repo_branch }}"
+        accept_hostkey: yes
+
+    - name: Setup the local dev environment
+      ansible.builtin.shell:
+        cmd: "{{ so_repo_path }}/stack-orchestrator/scripts/developer-mode-setup.sh"
+        chdir: "{{ so_repo_path }}/stack-orchestrator/"
+      when:
+        - so_repo_dev_setup == true
+
+    - name: Set path to dev laconic-so
+      set_fact:
+        so_bin_path: "{{ so_repo_path }}/stack-orchestrator/venv/bin"
+      when:
+        - so_repo_dev_setup == true
+
+  when:
+    - so_repo_checkout == true

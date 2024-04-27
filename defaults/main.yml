@@ -1,0 +1,15 @@
+---
+so_user_add: false
+so_user: so
+so_home: "/home/{{ so_user }}"
+
+so_repo_checkout: true
+so_repo_update: true
+so_repo_dev_setup: false
+so_repo_url: git@git.vdb.to:cerc-io/stack-orchestrator.git
+so_repo_branch: main
+so_repo_path: "{{ so_home }}"
+
+so_bin_get: true
+so_bin_path: /usr/local/bin
+so_bin_url: https://git.vdb.to/cerc-io/stack-orchestrator/releases/download/latest/laconic-so
